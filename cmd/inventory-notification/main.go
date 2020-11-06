@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/line/line-bot-sdk-go/linebot"
-	"github.com/PuerkitoBio/goquery"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/line/line-bot-sdk-go/linebot"
+	"github.com/PuerkitoBio/goquery"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
