@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
+	"strings"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -41,15 +41,13 @@ func lineHandler(w http.ResponseWriter, r *http.Request) {
 		// フレンド登録
 		case linebot.EventTypeFollow:
 			userID := event.Source.UserID
-			log.Printf("follow userID: %s", userID)
-			text := linebot.NewTextMessage("Amazonの在庫を通知しますよっと。")
+			text := linebot.NewTextMessage("Amazonの在庫を通知します")
 			if _, err := bot.PushMessage(userID, text).Do(); err != nil {
 				log.Fatal(err)
 			}
 		// フレンド解除
 		case linebot.EventTypeUnfollow:
 			userID := event.Source.UserID
-			log.Printf("unfollow userID: %s", userID)
 			text := linebot.NewTextMessage("またどうぞ！")
 			if _, err := bot.PushMessage(userID, text).Do(); err != nil {
 				log.Fatal(err)
@@ -78,7 +76,6 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 
 	doc, err := goquery.NewDocument(targetUrl)
 	if err != nil {
-		w.WriteHeader(500)
 		log.Fatal(err)
 		return
 	}
@@ -86,14 +83,14 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 	force := r.FormValue("ping") == "true"
 
 	if !force {
-		selection := doc.Find("#availability")
-		if m, _ := regexp.MatchString("在庫切れ", selection.Text()); m {
-			log.Printf("inventory empty.")
+		selection := doc.Find("#availability > span.a-color-price")
+		if strings.Contains(strings.TrimSpace(selection.Text()), "在庫切れ") {
+			log.Printf("在庫なし")
 			return
 		}
 
-		selection = doc.Find("#merchant-info")
-		if m, _ := regexp.MatchString("Amazon", selection.Text()); !m {
+		selection = doc.Find("#merchant-info a")
+		if !strings.Contains(strings.TrimSpace(selection.Text()), "Amazon.co.jp") {
 			log.Printf("Amazon 出品ではない")
 			return
 		}
