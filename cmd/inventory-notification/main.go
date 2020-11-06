@@ -2,10 +2,12 @@ package main
 
 import (
 	"github.com/line/line-bot-sdk-go/linebot"
+	"github.com/PuerkitoBio/goquery"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +69,49 @@ func lineHandler(w http.ResponseWriter, r *http.Request) {
 
 func hookHandler(w http.ResponseWriter, r *http.Request) {
 	log.Print("hookHandler call")
+
+	targetUrl := os.Getenv("TARGET_URL")
+	if targetUrl == "" {
+		log.Printf("target URL empty.")
+		return
+	}
+
+	doc, err := goquery.NewDocument(targetUrl)
+	if err != nil {
+		w.WriteHeader(500)
+		log.Fatal(err)
+		return
+	}
+
+	force := r.FormValue("ping") == "true"
+
+	if !force {
+		selection := doc.Find("#availability")
+		if m, _ := regexp.MatchString("在庫切れ", selection.Text()); m {
+			log.Printf("inventory empty.")
+			return
+		}
+
+		selection = doc.Find("#merchant-info")
+		if m, _ := regexp.MatchString("Amazon", selection.Text()); !m {
+			log.Printf("Amazon 出品ではない")
+			return
+		}
+	}
+
+	channelSecret := os.Getenv("LINE_CHANNEL_SECRET")
+	channelToken := os.Getenv("LINE_CHANNEL_TOKEN")
+	bot, err := linebot.New(channelSecret, channelToken)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	texts := []linebot.SendingMessage{}
+	texts = append(texts, linebot.NewTextMessage("在庫が復活しました！"), linebot.NewTextMessage(targetUrl))
+	if _, err := bot.BroadcastMessage(texts...).Do(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
