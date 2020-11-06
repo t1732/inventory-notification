@@ -74,6 +74,7 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("target URL empty.")
 		return
 	}
+	log.Printf(targetUrl)
 
 	doc, err := goquery.NewDocument(targetUrl)
 	if err != nil {
@@ -82,16 +83,22 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	force := r.FormValue("ping") == "true"
-
 	if !force {
-		selection := doc.Find("#availability > span.a-color-price")
-		if strings.Contains(strings.TrimSpace(selection.Text()), "在庫切れ") {
+		title := doc.Find("title").Text()
+		log.Printf(title)
+
+		availability := doc.Find("#availability > span.a-color-price").Text()
+		availability = strings.TrimSpace(availability)
+		log.Printf("availability: %s", availability)
+		if strings.Contains(availability, "在庫切れ") {
 			log.Printf("在庫なし")
 			return
 		}
 
-		selection = doc.Find("#merchant-info a")
-		if !strings.Contains(strings.TrimSpace(selection.Text()), "Amazon.co.jp") {
+		merchantInfo := doc.Find("#merchant-info a").Text()
+		merchantInfo = strings.TrimSpace(merchantInfo)
+		log.Printf("merchantInfo: %s", merchantInfo)
+		if !strings.Contains(merchantInfo, "Amazon.co.jp") {
 			log.Printf("Amazon 出品ではない")
 			return
 		}
