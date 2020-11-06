@@ -42,7 +42,7 @@ func lineHandler(w http.ResponseWriter, r *http.Request) {
 		case linebot.EventTypeFollow:
 			userID := event.Source.UserID
 			log.Printf("follow userID: %s", userID)
-			text := linebot.NewTextMessage("AmazonのPS5の在庫を通知しますよっと。")
+			text := linebot.NewTextMessage("Amazonの在庫を通知しますよっと。")
 			if _, err := bot.PushMessage(userID, text).Do(); err != nil {
 				log.Fatal(err)
 			}
