@@ -7,9 +7,28 @@ import (
 	"os"
 	"strings"
 
-	"github.com/line/line-bot-sdk-go/linebot"
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/t1732/inventory-notification/internal/notifier"
 )
+
+func handleFollow(client *notifier.LineClient, userID string) {
+	if _, err := client.PushMessage(userID, "Amazonの在庫を通知します").Do(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleUnfollow(client *notifier.LineClient, userID string) {
+	if _, err := client.PushMessage(userID, "またどうぞ！").Do(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleMessage(client *notifier.LineClient, replyToken string) {
+	if _, err := client.ReplyMessage(replyToken, "そうですね").Do(); err != nil {
+		log.Fatal(err)
+	}
+}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("handler call")
@@ -18,52 +37,26 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func lineHandler(w http.ResponseWriter, r *http.Request) {
 	log.Print("lineHandler call")
 
-	channelSecret := os.Getenv("LINE_CHANNEL_SECRET")
-	channelToken := os.Getenv("LINE_CHANNEL_TOKEN")
-	bot, err := linebot.New(channelSecret, channelToken)
+	client, err := notifier.New()
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(500)
 		return
 	}
 
-	events, err := bot.ParseRequest(r)
+	events, err := client.ParseRequest(w, r)
 	if err != nil {
-		if err == linebot.ErrInvalidSignature {
-			log.Fatal(err)
-			w.WriteHeader(400)
-		} else {
-			w.WriteHeader(500)
-		}
+		log.Fatal(err)
+		w.WriteHeader(500)
 		return
 	}
 
-	for _, event := range events {
-		switch event.Type {
-		// フレンド登録
-		case linebot.EventTypeFollow:
-			userID := event.Source.UserID
-			text := linebot.NewTextMessage("Amazonの在庫を通知します")
-			if _, err := bot.PushMessage(userID, text).Do(); err != nil {
-				log.Fatal(err)
-			}
-		// フレンド解除
-		case linebot.EventTypeUnfollow:
-			userID := event.Source.UserID
-			text := linebot.NewTextMessage("またどうぞ！")
-			if _, err := bot.PushMessage(userID, text).Do(); err != nil {
-				log.Fatal(err)
-			}
-		case linebot.EventTypeMessage:
-			switch message := event.Message.(type) {
-			case *linebot.TextMessage:
-				log.Printf("receive message: %s", message.Text)
-				text := linebot.NewTextMessage("そうですね")
-				if _, err := bot.ReplyMessage(event.ReplyToken, text).Do(); err != nil {
-					log.Fatal(err)
-				}
-			}
-		}
+	eventAction := &notifier.EventAction{
+		Follow: handleFollow,
+		Unfollow: handleUnfollow,
+		Message: handleMessage,
 	}
+	client.HandleEvent(events, eventAction)
 }
 
 func hookHandler(w http.ResponseWriter, r *http.Request) {
@@ -104,17 +97,15 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	channelSecret := os.Getenv("LINE_CHANNEL_SECRET")
-	channelToken := os.Getenv("LINE_CHANNEL_TOKEN")
-	bot, err := linebot.New(channelSecret, channelToken)
+	client, err := notifier.New()
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(500)
 		return
 	}
 
-	texts := []linebot.SendingMessage{}
-	texts = append(texts, linebot.NewTextMessage("在庫が復活しました！"), linebot.NewTextMessage(targetUrl))
-	if _, err := bot.BroadcastMessage(texts...).Do(); err != nil {
+	texts := []string{"在庫が復活しました！", targetUrl}
+	if _, err = client.BroadcastMessage(texts).Do(); err != nil {
 		log.Fatal(err)
 	}
 }
