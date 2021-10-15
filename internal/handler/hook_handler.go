@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"os"
-	"net/http"
 	"log"
+	"net/http"
+	"os"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -32,18 +33,20 @@ func HookHandler(w http.ResponseWriter, r *http.Request) {
 		title := doc.Find("title").Text()
 		log.Printf(title)
 
-		availability := doc.Find("#availability > span.a-color-price").Text()
+		availability := doc.Find("#availability").Text()
 		availability = strings.TrimSpace(availability)
-		log.Printf("availability: %s", availability)
-		if strings.Contains(availability, "在庫切れ") {
+		log.Printf(availability)
+		r := regexp.MustCompile(`お取り扱いできません`)
+		if r.MatchString(availability) {
 			log.Printf("在庫なし")
 			return
 		}
 
-		merchantInfo := doc.Find("#merchant-info a").Text()
+		merchantInfo := doc.Find("#merchant-info").Text()
 		merchantInfo = strings.TrimSpace(merchantInfo)
 		log.Printf("merchantInfo: %s", merchantInfo)
-		if !strings.Contains(merchantInfo, "Amazon.co.jp") {
+		r = regexp.MustCompile(`Amazon\.co\.jp`)
+		if !r.MatchString(merchantInfo) {
 			log.Printf("Amazon 出品ではない")
 			return
 		}
@@ -56,7 +59,7 @@ func HookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	texts := []string{"在庫が復活しました！", targetUrl}
+	texts := []string{"在庫が復活したかもしれません", targetUrl}
 	if _, err = client.BroadcastMessage(texts).Do(); err != nil {
 		log.Fatal(err)
 	}
