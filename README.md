@@ -1,3 +1,3 @@
 # Inventory-notification
 
-golang 1.15.4
+golang 1.17.2
