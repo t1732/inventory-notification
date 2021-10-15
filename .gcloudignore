@@ -1,0 +1,10 @@
+.gcloudignore
+.DS_Store
+.envrc
+.tool-versions
+
+.git
+.gitignore
+#!include:.gitignore
+
+cloudbuild.yaml

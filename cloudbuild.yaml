@@ -1,0 +1,28 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/inventory-notification:$BUILD_ID'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/inventory-notification:$BUILD_ID']
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'tag'
+      - 'gcr.io/$PROJECT_ID/inventory-notification:$BUILD_ID'
+      - 'gcr.io/$PROJECT_ID/inventory-notification:latest'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'inventory-notification'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/inventory-notification:$BUILD_ID'
+      - '--region'
+      - 'asia-northeast1'
+
+images:
+  - 'gcr.io/$PROJECT_ID/inventory-notification:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/inventory-notification:latest'
