@@ -22,7 +22,27 @@ func HookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf(targetUrl)
 
-	doc, err := goquery.NewDocument(targetUrl)
+	client := &http.Client{}
+
+        req, err := http.NewRequest("GET", targetUrl, nil)
+        if err != nil {
+                log.Fatalln(err)
+        }
+
+	userAgent := os.Getenv("USER_AGENT")
+	if userAgent == "" {
+		userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36"
+	}
+        req.Header.Set("User-Agent", userAgent)
+
+        res, err := client.Do(req)
+        if err != nil {
+                log.Fatalln(err)
+        }
+
+        defer res.Body.Close()
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -52,7 +72,7 @@ func HookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	client, err := notifier.New()
+	n, err := notifier.New()
 	if err != nil {
 		log.Fatal(err)
 		w.WriteHeader(500)
@@ -60,7 +80,7 @@ func HookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	texts := []string{"在庫が復活したかもしれません", targetUrl}
-	if _, err = client.BroadcastMessage(texts).Do(); err != nil {
+	if _, err = n.BroadcastMessage(texts).Do(); err != nil {
 		log.Fatal(err)
 	}
 }
